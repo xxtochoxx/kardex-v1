@@ -1,0 +1,14 @@
+# Core Framework (puedes cambiar FastAPI por Flask si querés)
+fastapi
+uvicorn
+
+# Base de datos PostgreSQL (si vas a usar SQLAlchemy)
+sqlalchemy
+psycopg2-binary
+
+# Validación
+pydantic
+
+# Testing
+pytest
+pytest-cov
