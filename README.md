@@ -23,4 +23,17 @@ Este proyecto comienza como un backend en Python y se expandirá en futuras vers
 ```bash
 git clone https://github.com/xxtochoxx/kardex-v1.git
 cd kardex-v1
+```
+##Funciones a implementar:
 
+```bash
+Crear producto
+Obtener producto
+Listar productos
+Actualizar producto
+Desactivar producto
+Código de identicaciôn unico
+Nombre puede repertirse
+Unidad (unidad, caja, etc.) - caracteristica inherente del producto
+Estado (activo/inactivo) - que exista como regstro pero sin stock
+```
