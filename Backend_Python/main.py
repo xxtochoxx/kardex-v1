@@ -1,13 +1,14 @@
-
-
-productos = {}
+from sqlalchemy import text, or_
+from database import SessionLocal
+from tables_db import Producto, Modelo, Marca, Fabricante
 
 def crear_producto():
 
     while True:
-        print('-' * 100)
+        print()
+        print('-' * 80)
         print('Registrar un Producto')
-        print('-' * 100)
+        print('-' * 80)
 
         while True:
             nombre_producto = input('\nDigite el Nombre del Producto -> ')
@@ -68,27 +69,51 @@ def crear_producto():
         while True:
             opcion_estado = input('Digite el Estado del Producto (Esciba "1" si desea que este activo o "0" si desea que no este activo) -> ')
             if opcion_estado == '1':
-                estado_producto = 'activo'
+                estado_producto = True
                 break
             elif opcion_estado == '0':
-                estado_producto = 'no activo'
+                estado_producto = False
                 break
             else:
                 print('Por favor digite un Dato Valido')
         break
 
-    identificacion_unica = id_unico(modelo_producto, marca_producto, fabricante_producto)
-    
-    productos[identificacion_unica] = {('id', identificacion_unica), ('nombre', nombre_producto), ('stock', stock_producto), ('unidad_stock', unidad_stock_producto), ('marca', marca_producto), ('modelo', modelo_producto), ('fabricante', fabricante_producto), ('estado', estado_producto)}
-    productos[nombre_producto] = {('id', identificacion_unica), ('nombre', nombre_producto), ('stock', stock_producto), ('unidad_stock', unidad_stock_producto), ('marca', marca_producto), ('modelo', modelo_producto), ('fabricante', fabricante_producto), ('estado', estado_producto)}
+    datos_id = generar_id_unico(marca_producto, modelo_producto, fabricante_producto)
+    id = f'{datos_id[0]:03d}-{datos_id[1]:03d}-{datos_id[2]:03d}'
+
+    session = SessionLocal()
+
+    try:
+        producto = Producto(
+            codigo_producto= id,
+            nombre= nombre_producto,
+            modelo_id= datos_id[2],
+            marca_id= datos_id[1],
+            fabricante_id= datos_id[0],
+            unidad_stock= unidad_stock_producto,
+            stock_actual= int(stock_producto),
+            estado= estado_producto
+            )
+        session.add(producto)
+        session.commit()
+        print('-' * 80)
+        print("✅ Producto insertado correctamente")
+        print('-' * 80)
+        print()
+    except Exception as e:
+        session.rollback()
+        print("❌ Error al insertar:", e)
+    finally: 
+        session.close()
 
 def obtener_producto():
-        
-    resultado = 0
-    lista_resultados = []
+    session = SessionLocal()
 
     while True:
+        print()
+        print('*' * 80)
         busqueda = input('Digite el Nombre o ID Del Producto Que Desea Buscar -> ')
+        print('*' * 80)
         if len(busqueda) < 3:
             print('-' * 100)
             print('Por Favor Digite un Dato de al menos 3 DIGITOS')
@@ -96,78 +121,166 @@ def obtener_producto():
         else:
             break
 
-    print('\nResultados:')
-    a = 1
-    for i in productos:
-        if busqueda.lower() in i.lower():
-            print(f'{a}.{i}')
-            a =+ 1
-            resultado += 1
-            lista_resultados.append(i)
+    productos = session.query(Producto).filter(
+        or_(
+            Producto.nombre.ilike(f"%{busqueda}%"),
+            Producto.codigo_producto.ilike(f"%{busqueda}%")
+        )
+    ).all()
 
-    if resultado == 0:
-        print('No se ha Encontro Ningun Resultado')
+    if len(productos) == 0:
+        print('\nNo se ha Encontrado Ningun Resultado')
+    else:
+        print()
+        print('-' * 80)
+        print('Elementos Encontrados:')
+        print('-' * 80)
+        print('\nCodigo - Nombre - Modelo - Marca - Fabricante - Unidad Stock - Stock Actual - Estado')
+        print()
 
-    elif resultado >= 1:
-        while True:
-            try:    
-                eleccion = int(input('\nPor favor Digite a Cual Desea Ingresar -> '))
-                if int(eleccion) > resultado or int(eleccion) <= 0:
-                    print('Por Favor Digite un Valor Valido')
-                else:
-                    break
-            except:
-                 print('-' * 100)
-                 print('Por Favor Digite un Numero Entero')
-                 print('-' * 100)
-        
-        print('')
-        for i in productos[lista_resultados[eleccion - 1]]:
-                    print(f'{i}: {productos[lista_resultados[eleccion - 1]].get(i)}') 
+        for producto in productos:
+            print(f'{producto.codigo_producto} - {producto.nombre} - {producto.modelo.nombre} - {producto.marca.nombre} - {producto.fabricante.nombre} - {producto.unidad_stock} - {producto.stock_actual} - {producto.estado}')
+        print()
+    session.close()
+    return productos
 
 def listar_productos():
-    pass
+    session = SessionLocal()
 
-def id_unico(modelo, marca, fabricante):
-    '''
-    Esta funcion hace que cree el ID para el producto para esto:
-    #Primero: Tengo que obtener los datos de Marca, Modelo y Fabricante
-    #Segundo: Verificar si existen en la base de datos y si es asi obtener el numero asignado de cada uno en caso contrario agregarlo a la tabla y asignarle un numero
-    #Tercero: Juntar los 3 numeros para crear el dato
-    '''
-    #Estas listas son para probar en Python ya que aun no se agrega BD
-    #####
-    modelo_bd = ['A1','A2','B1','C4']
-    marca_bd = ['Samsung']
-    fabricante_bd = ['Samsung']
-    ####
-    modelo_num = None
-    marca_num = None
-    fabricante_num = None
+    productos = session.query(Producto).all()
 
-    for i in modelo_bd:
-        if i == modelo:
-            modelo_num = '00' + str(modelo_bd.index(i) + 1)
-            break
-    if modelo_num is None:
-        modelo_bd.append(modelo)
-        modelo_num = '00' + str(len(modelo_bd))
+    print()
+    print('*' * 80)
+    print('Elementos Encontrados:')
+    print('*' * 80)
+    print('\nCodigo - Nombre - Modelo - Marca - Fabricante - Unidad Stock - Stock Actual - Estado')
+    print()
 
-    for i in marca_bd:
-        if i == marca:
-            marca_num = '00' + str(marca_bd.index(i) + 1)
-            break
-    if marca_num is None:
-        marca_bd.append(marca)
-        marca_num = '00' + str(len(marca_bd))
+    a = 1
+    for producto in productos:
+        print(f'{a}. {producto.codigo_producto} - {producto.nombre} - {producto.modelo.nombre} - {producto.marca.nombre} - {producto.fabricante.nombre} - {producto.unidad_stock} - {producto.stock_actual} - {producto.estado}')
+        a += 1
+    
+def generar_id_unico(marca, modelo, fabricante) -> str:
+    session = SessionLocal()
+    id = []
+    try:
+        query_fabricante = text("SELECT codigo FROM fabricantes WHERE nombre = :fabricante;")
+        resultado_fabricante = session.execute(query_fabricante, {'fabricante': fabricante}).fetchone()
 
-    for i in fabricante_bd:
-        if i == fabricante:
-            fabricante_num = '00' + str(fabricante_bd.index(i) + 1)
-            break
-    if fabricante_num is None:
-        fabricante_bd.append(fabricante)
-        fabricante_num = '00' + str(len(fabricante_bd))
+        if resultado_fabricante is None:
+            query_fabricante = text('SELECT codigo FROM fabricantes ORDER BY "id" DESC LIMIT 1')
+            resultado_fabricante = session.execute(query_fabricante).fetchone()
+            if resultado_fabricante is None:
+                id.append(1)
+                fabricante_bd = Fabricante(
+                id = id[0],
+                nombre = fabricante,
+                codigo = '001'
+                )
+                session.add(fabricante_bd)
+                session.commit()
+            else:    
+                resultado_fabricante = resultado_fabricante[0]
+                id.append(int(resultado_fabricante) + 1)
+                fabricante_bd = Fabricante(
+                id = id[0],
+                nombre = fabricante,
+                codigo = f'{id[0]:03d}'
+                )
+                session.add(fabricante_bd)
+                session.commit()
+        else:
+            resultado_fabricante = resultado_fabricante[0]
+            id.append(int(resultado_fabricante))
 
-    return(modelo_num + '-' + marca_num + '-' + fabricante_num)
+        query_marca = text("SELECT codigo FROM marcas WHERE nombre = :marca;")
+        resultado_marca = session.execute(query_marca, {'marca': marca}).fetchone()
 
+        if resultado_marca is None:
+            query_marca = text('SELECT codigo FROM marcas ORDER BY "id" DESC LIMIT 1')
+            resultado_marca = session.execute(query_marca).fetchone()
+            if resultado_marca is None:
+                id.append(1)
+                marca_bd = Marca(
+                id = id[1],
+                nombre = marca,
+                codigo = '001',
+                fabricante_id = id[0]
+                )
+                session.add(marca_bd)
+                session.commit()
+            else:
+                resultado_marca = resultado_marca[0]
+                id.append(int(resultado_marca) + 1)
+                marca_bd = Marca(
+                id = id[1],
+                nombre = marca,
+                codigo = f'{id[1]:03d}',
+                fabricante_id = id[0]
+                )
+                session.add(marca_bd)
+                session.commit()
+        else:
+            resultado_marca = resultado_marca[0]
+            id.append(int(resultado_marca))
+
+        query_modelo = text("SELECT codigo FROM modelos WHERE nombre = :modelo;")
+        resultado_modelo = session.execute(query_modelo, {'modelo': modelo}).fetchone()
+
+        if resultado_modelo is None:
+            query_modelo = text('SELECT codigo FROM modelos ORDER BY "id" DESC LIMIT 1')
+            resultado_modelo = session.execute(query_modelo).fetchone()
+            if resultado_modelo is None:
+                id.append(1)
+                modelo_bd = Modelo(
+                id = id[2],
+                nombre = modelo,
+                codigo = '001',
+                marca_id = id[1]
+                )
+                session.add(modelo_bd)
+                session.commit()
+            else:
+                resultado_modelo = resultado_modelo[0]
+                id.append(int(resultado_modelo) + 1)
+                modelo_bd = Modelo(
+                id = id[2],
+                nombre = modelo,
+                codigo = f'{id[2]:03d}',
+                marca_id = id[1]
+                )
+                session.add(modelo_bd)
+                session.commit()
+        else:
+            resultado_modelo = resultado_modelo[0]
+            id.append(int(resultado_modelo))
+
+    finally:
+        session.close()
+
+    return(id)
+
+while True:
+    print('°' * 80)
+    print('Menu de Funciones del Kardex:')
+    print('°' * 80)
+    print()
+    print('1. Crear Producto')
+    print('2. Obtener Producto')
+    print('3. Listar Productos')
+    print('\nDigite "Exit" para Salir')
+    funcion = input('\nPor favor Digite que Funcion Desea Usar -> ')
+
+    if funcion == '1':
+        crear_producto()
+    elif funcion == '2':
+        obtener_producto()
+    elif funcion == '3':
+        listar_productos()
+    elif funcion.lower() == 'exit':
+        break
+    else:
+        print('-' * 80)
+        print('Digite un Valor Valido Por Favor')
+        print('-' * 80)
